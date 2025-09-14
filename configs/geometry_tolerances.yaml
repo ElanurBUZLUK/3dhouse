@@ -1,0 +1,67 @@
+# Geometry tolerances and constraints for 3D reconstruction
+units: meters
+
+# Numerical tolerances
+epsilon: 1e-5
+weld_distance: 1e-4
+merge_distance: 1e-3
+snap_distance: 1e-2
+
+# Wall constraints
+min_wall_thickness: 0.12
+max_wall_thickness: 0.5
+default_wall_thickness: 0.2
+wall_height_range: [2.0, 4.0]
+default_wall_height: 3.0
+
+# Door constraints
+door_height_m: 2.0
+door_width_range: [0.6, 1.2]
+default_door_width: 0.9
+door_threshold_height: 0.02
+
+# Window constraints
+window_height_ratio: [0.3, 0.8]
+window_width_range: [0.6, 2.0]
+default_window_width: 1.2
+window_sill_height: 0.9
+window_height_range: [0.8, 1.5]
+
+# Roof constraints
+roof_pitch_range: [15, 60]  # degrees
+default_roof_pitch: 30
+roof_overhang_range: [0.2, 1.0]
+default_roof_overhang: 0.5
+min_roof_height: 0.5
+
+# Opening constraints
+opening_wall_overlap: 0.1  # minimum overlap with wall
+opening_ground_distance: 0.0  # doors must touch ground
+opening_roof_clearance: 0.2  # minimum clearance from roof
+
+# CSG boolean operations
+boolean_tolerance: 1e-6
+boolean_precision: 1e-8
+max_boolean_iterations: 10
+
+# Mesh quality
+min_triangle_area: 1e-8
+max_triangle_aspect_ratio: 10.0
+watertight_tolerance: 1e-6
+manifold_tolerance: 1e-6
+
+# UV mapping
+uv_padding: 0.01
+texel_density_range: [256, 512]  # pixels per meter
+default_texel_density: 256
+
+# LOD constraints
+lod0_max_tris: 50000
+lod1_max_tris: 20000
+lod2_max_tris: 5000
+decimation_ratio: 0.5
+
+# Performance budgets
+max_processing_time: 2.0  # seconds
+max_memory_usage: 2048  # MB
+max_file_size: 100  # MB for exported models

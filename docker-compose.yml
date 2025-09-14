@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  sketch2house3d:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./out:/app/out
+      - ./models:/app/models
+    environment:
+      - PYTHONPATH=/app
+      - BLENDER_PATH=/opt/blender
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  # Optional: Jupyter notebook for development
+  jupyter:
+    build: .
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./:/app
+      - ./notebooks:/app/notebooks
+    environment:
+      - PYTHONPATH=/app
+    command: ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
+    profiles:
+      - dev

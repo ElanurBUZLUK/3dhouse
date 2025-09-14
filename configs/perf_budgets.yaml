@@ -1,0 +1,58 @@
+# Performance budgets and constraints
+performance:
+  # Processing time limits (seconds)
+  max_single_house_time: 2.0
+  max_batch_processing_time: 10.0
+  max_segmentation_time: 0.5
+  max_layout_solving_time: 0.3
+  max_geometry_generation_time: 1.0
+  max_export_time: 0.2
+
+  # Memory usage limits (MB)
+  max_memory_usage: 2048
+  max_gpu_memory_usage: 4096
+  max_model_memory: 512
+
+  # File size limits (MB)
+  max_exported_model_size: 100
+  max_texture_atlas_size: 50
+  max_intermediate_file_size: 200
+
+  # Triangle count limits
+  lod0_max_triangles: 50000
+  lod1_max_triangles: 20000
+  lod2_max_triangles: 5000
+  max_triangles_per_face: 1000
+
+  # Texture resolution limits
+  max_texture_resolution: 2048
+  max_uv_atlas_resolution: 4096
+  default_texture_resolution: 512
+
+  # Quality thresholds
+  min_watertight_ratio: 0.95
+  max_self_intersection_ratio: 0.01
+  min_manifold_ratio: 0.99
+  max_normal_error_ratio: 0.01
+
+  # Batch processing
+  max_batch_size: 32
+  optimal_batch_size: 8
+  max_concurrent_requests: 4
+
+  # Caching
+  enable_model_caching: true
+  enable_geometry_caching: true
+  cache_size_limit: 1000  # number of cached items
+  cache_ttl: 3600  # seconds
+
+  # Fallback thresholds
+  enable_fallback: true
+  fallback_timeout: 1.5
+  fallback_quality_threshold: 0.8
+
+  # Monitoring
+  enable_performance_monitoring: true
+  log_slow_operations: true
+  slow_operation_threshold: 1.0  # seconds
+  enable_profiling: false

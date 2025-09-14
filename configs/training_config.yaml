@@ -1,0 +1,99 @@
+# Training configuration for Sketch2House3D segmentation model
+model:
+  architecture: deeplabv3plus
+  encoder: mobilenetv3_large_100
+  input_size: [256, 256]
+  num_classes: 4
+  classes: ["bg", "wall", "roof", "opening"]
+  pretrained: true
+  activation: softmax
+
+# Loss configuration
+loss:
+  type: ce_dice
+  class_weights: [0.1, 0.4, 0.3, 0.2]  # bg, wall, roof, opening
+  label_smoothing: 0.05
+  dice_weight: 0.5
+  ce_weight: 0.5
+
+# Optimizer configuration
+optimizer:
+  type: adamw
+  lr: 0.001
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+
+# Learning rate scheduler
+scheduler:
+  type: cosine
+  warmup_epochs: 5
+  min_lr: 1e-6
+
+# Data augmentation
+augment:
+  sketch_style: true
+  blur: true
+  elastic: true
+  stroke_jitter: true
+  color_jitter: true
+  random_crop: true
+  horizontal_flip: true
+  vertical_flip: false
+  rotation: 15
+  brightness_contrast: 0.2
+
+# Training parameters
+train:
+  batch_size: 16
+  epochs: 80
+  mixed_precision: true
+  gradient_clip: 1.0
+  accumulate_grad_batches: 1
+  val_check_interval: 1.0
+  log_every_n_steps: 50
+  save_top_k: 3
+  monitor: val_miou
+  mode: max
+
+# Validation
+validation:
+  batch_size: 32
+  num_workers: 4
+
+# Data loading
+data:
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+
+# Model checkpointing
+checkpoint:
+  save_dir: runs
+  filename: "seg_unet_{epoch:02d}_{val_miou:.3f}"
+  save_last: true
+  save_on_train_epoch_end: false
+
+# Logging
+logging:
+  log_dir: logs
+  log_every_n_steps: 50
+  val_log_every_n_epochs: 1
+  test_log_every_n_epochs: 1
+
+# Early stopping
+early_stopping:
+  monitor: val_miou
+  mode: max
+  patience: 10
+  min_delta: 0.001
+
+# Metrics
+metrics:
+  - miou
+  - pixel_accuracy
+  - dice_score
+  - boundary_f1
+  - class_iou

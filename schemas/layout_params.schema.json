@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Layout Parameters Schema",
+  "description": "Schema for 2D layout parameters extracted from child's sketch",
+  "properties": {
+    "scale_m_per_px": {
+      "type": "number",
+      "minimum": 0.001,
+      "maximum": 0.1,
+      "description": "Scale factor to convert pixels to meters"
+    },
+    "facade_polygon": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "minItems": 2,
+        "maxItems": 2
+      },
+      "minItems": 3,
+      "description": "2D polygon representing the facade outline in pixel coordinates"
+    },
+    "openings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["door", "window"]
+          },
+          "bbox_px": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 4,
+            "maxItems": 4,
+            "description": "Bounding box [x_min, y_min, x_max, y_max] in pixel coordinates"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Confidence score for the opening detection"
+          }
+        },
+        "required": ["kind", "bbox_px"],
+        "additionalProperties": false
+      },
+      "description": "List of detected openings (doors and windows)"
+    },
+    "roof": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["gable", "hip", "shed", "flat"]
+        },
+        "pitch_deg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 90,
+          "description": "Roof pitch in degrees"
+        },
+        "overhang_m": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2.0,
+          "description": "Roof overhang in meters"
+        },
+        "ridge_line_px": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "minItems": 2,
+          "description": "Ridge line coordinates for gable/hip roofs"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Confidence score for roof detection"
+        }
+      },
+      "required": ["type", "pitch_deg", "overhang_m"],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "image_size": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Original image dimensions [width, height]"
+        },
+        "processing_time": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Processing time in seconds"
+        },
+        "model_version": {
+          "type": "string",
+          "description": "Version of the segmentation model used"
+        },
+        "constraints_satisfied": {
+          "type": "boolean",
+          "description": "Whether all geometric constraints are satisfied"
+        },
+        "confidence_score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Overall confidence score for the layout"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["scale_m_per_px", "facade_polygon", "openings", "roof"],
+  "additionalProperties": false
+}
