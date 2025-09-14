@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 import json
 import cv2
+import os
+import yaml
+import cv2
 
 from .preprocessing import ImageNormalizer, EdgeDetector, ShapeDetector
 from .models import create_segmentation_model
@@ -52,7 +55,9 @@ class Sketch2HousePipeline:
                 'encoder': 'mobilenetv3_large_100',
                 'num_classes': 4,
                 'input_size': [256, 256],
-                'pretrained': True
+                'pretrained': True,
+                'in_channels': 3,
+                'weights_path': None
             },
             'layout': {
                 'min_wall_thickness': 0.12,
@@ -169,6 +174,13 @@ class Sketch2HousePipeline:
                 'status': 'completed',
                 'time': time.time() - start_time
             })
+            try:
+                out_dir = Path(output_dir)
+                out_dir.mkdir(parents=True, exist_ok=True)
+                mask = self._compose_label_mask(segmentation_result)
+                cv2.imwrite(str(out_dir / 'mask.png'), mask)
+            except Exception as _:
+                pass
             
             # Step 3: Layout extraction
             logger.info("Step 3: Extracting layout...")
@@ -435,7 +447,17 @@ class Sketch2HousePipeline:
             # This is a placeholder for model loading
             # In practice, you'd load a trained model
             logger.info("Loading segmentation model...")
-            # self.model = create_segmentation_model(self.config['segmentation'])
+            seg_cfg = self.config.get('segmentation', {})
+            self.model = create_segmentation_model(seg_cfg)
+            weights_path = seg_cfg.get('weights_path')
+            if weights_path and __import__('os').path.exists(weights_path):
+                import torch
+                state = torch.load(weights_path, map_location='cpu')
+                if isinstance(state, dict) and 'state_dict' in state:
+                    self.model.load_state_dict(state['state_dict'])
+                elif isinstance(state, dict):
+                    self.model.load_state_dict(state)
+                logger.info(f"Loaded weights from {weights_path}")
             logger.info("Model loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
@@ -479,3 +501,24 @@ def run_pipeline(image_path: str, output_dir: str, **kwargs) -> Dict[str, Any]:
     pipeline = Sketch2HousePipeline()
     pipeline.initialize()
     return pipeline.process(image_path, output_dir, **kwargs)
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description='Sketch2House3D Pipeline')
+    parser.add_argument('--input', required=True, help='Input sketch image path')
+    parser.add_argument('--output', required=True, help='Output directory')
+    parser.add_argument('--backend', default='open3d', help='3D backend')
+    parser.add_argument('--export', default='gltf', help='Export format')
+    parser.add_argument('--config', default=None, help='YAML config path')
+    args = parser.parse_args()
+
+    cfg = None
+    import os, yaml, json
+    if args.config and os.path.exists(args.config):
+        with open(args.config, 'r') as f:
+            cfg = yaml.safe_load(f)
+    pipe = Sketch2HousePipeline(cfg)
+    pipe.initialize()
+    res = pipe.process(args.input, args.output, backend=args.backend, export_format=args.export)
+    print(json.dumps(res, indent=2))
