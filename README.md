@@ -84,7 +84,8 @@ Sketch2House3D/
 - **Mesh kalitesi** ve **LOD** desteği
 
 ### Export & Formatlar
-- **glTF2** (units=meters), **FBX**, **USDZ**
+- **glTF2** (units=meters) — tek dosyalık GLB olarak yazılır
+- **FBX**, **USDZ**
 - **Unity/Blender** round-trip testleri
 - **UV mapping** ve **texture baking**
 

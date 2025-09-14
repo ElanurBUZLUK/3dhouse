@@ -4,7 +4,7 @@ Handles image normalization, edge detection, shape detection, and perspective co
 """
 
 from .image_normalizer import ImageNormalizer, normalize_sketch_image
-from .edge_detector import EdgeDetector, detect_sketch_edges
+from .edge_detection import EdgeDetector, detect_sketch_edges
 from .shape_detector import ShapeDetector, detect_shapes_in_image
 from .perspective_estimator import PerspectiveEstimator, estimate_perspective_from_image
 

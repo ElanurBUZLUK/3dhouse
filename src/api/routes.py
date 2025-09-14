@@ -8,17 +8,18 @@ from fastapi.responses import FileResponse, JSONResponse
 from typing import Optional, Dict, Any
 import logging
 import os
+import shutil
 import tempfile
 import uuid
 from pathlib import Path
 import json
 
 from .schemas import (
-    InferenceRequest, 
-    InferenceResponse, 
-    ProcessingStatus,
+    InferenceRequest,
+    InferenceResponse,
+    ProcessingStatusResponse,
     BatchInferenceRequest,
-    BatchInferenceResponse
+    BatchInferenceResponse,
 )
 from .services import Sketch2HouseService
 
@@ -184,7 +185,7 @@ async def batch_infer_3d_houses(
         logger.error(f"Error processing batch: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/status/{request_id}", response_model=ProcessingStatus)
+@router.get("/status/{request_id}", response_model=ProcessingStatusResponse)
 async def get_processing_status(request_id: str):
     """
     Get the processing status of a request.
@@ -197,7 +198,7 @@ async def get_processing_status(request_id: str):
     """
     try:
         status = await sketch_service.get_processing_status(request_id)
-        return ProcessingStatus(**status)
+        return ProcessingStatusResponse(**status)
     except Exception as e:
         logger.error(f"Error getting status for {request_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -220,9 +221,12 @@ async def download_model(request_id: str, format: str = "gltf"):
         if not model_path or not os.path.exists(model_path):
             raise HTTPException(status_code=404, detail="Model not found")
         
+        # Derive actual extension from the real file on disk
+        from pathlib import Path as _Path
+        real_ext = _Path(model_path).suffix.lstrip('.') or format
         return FileResponse(
             path=model_path,
-            filename=f"house_{request_id}.{format}",
+            filename=f"house_{request_id}.{real_ext}",
             media_type="application/octet-stream"
         )
         

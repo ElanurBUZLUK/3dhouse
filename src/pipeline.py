@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import json
+import cv2
 
 from .preprocessing import ImageNormalizer, EdgeDetector, ShapeDetector
 from .models import create_segmentation_model
@@ -224,8 +225,12 @@ class Sketch2HousePipeline:
         """Preprocess the input image."""
         try:
             # Load and normalize image
+            image = cv2.imread(image_path)
+            if image is None:
+                raise ValueError(f"Could not load image from {image_path}")
+
             normalizer = self.preprocessing_modules['image_normalizer']
-            normalization_result = normalizer.normalize(image_path)
+            normalization_result = normalizer.normalize(image)
             
             # Detect edges
             edge_detector = self.preprocessing_modules['edge_detector']

@@ -4,6 +4,7 @@ Ensures geometric and architectural constraints are satisfied.
 """
 
 import numpy as np
+import cv2
 from typing import Dict, Any, List, Tuple, Optional, Callable
 import logging
 from dataclasses import dataclass

@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 import uuid
 from datetime import datetime
+import cv2
+import numpy as np
 
 from ..preprocessing import ImageNormalizer, EdgeDetector, ShapeDetector
 from ..models import create_segmentation_model
@@ -37,6 +39,7 @@ class Sketch2HouseService:
         self.geometry_modules = {}
         self.processing_status = {}
         self.config = self._load_config()
+        self._start_time = time.time()
         
     async def initialize(self):
         """Initialize the service components."""
@@ -159,8 +162,12 @@ class Sketch2HouseService:
         """Preprocess the input image."""
         try:
             # Load and normalize image
+            image = cv2.imread(image_path)
+            if image is None:
+                raise ValueError(f"Could not load image from {image_path}")
+
             normalizer = self.preprocessing_modules['image_normalizer']
-            normalization_result = normalizer.normalize(image_path)
+            normalization_result = normalizer.normalize(image)
             
             # Detect edges
             edge_detector = self.preprocessing_modules['edge_detector']
@@ -315,8 +322,8 @@ class Sketch2HouseService:
             
             # Export based on format
             if export_format == 'gltf':
-                output_path = output_dir / f"house_{request_id}.gltf"
-                export_result = export_to_gltf(model_data, str(output_path))
+                requested_path = output_dir / f"house_{request_id}.gltf"
+                export_result = export_to_gltf(model_data, str(requested_path))
             elif export_format == 'fbx':
                 output_path = output_dir / f"house_{request_id}.fbx"
                 export_result = export_to_fbx(model_data, str(output_path))
@@ -333,7 +340,7 @@ class Sketch2HouseService:
                     'total_vertices': geometry_result['metadata']['total_vertices'],
                     'total_faces': geometry_result['metadata']['total_faces']
                 },
-                'output_files': [str(output_path)]
+                'output_files': export_result.get('output_files') or [export_result.get('output_path')]
             }
             
             with open(report_path, 'w') as f:
@@ -387,14 +394,22 @@ class Sketch2HouseService:
         return {
             'model_loaded': self.model is not None,
             'active_requests': len(self.processing_status),
-            'uptime': time.time() - time.time()  # Calculate actual uptime
+            'uptime': time.time() - self._start_time
         }
     
     async def get_model_path(self, request_id: str, format: str) -> Optional[str]:
         """Get model file path for download."""
         output_dir = Path("outputs") / request_id
-        model_path = output_dir / f"house_{request_id}.{format}"
-        return str(model_path) if model_path.exists() else None
+        # If GLTF was requested, exporter may have produced GLB
+        if format.lower() == 'gltf':
+            glb_path = output_dir / f"house_{request_id}.glb"
+            if glb_path.exists():
+                return str(glb_path)
+            gltf_path = output_dir / f"house_{request_id}.gltf"
+            return str(gltf_path) if gltf_path.exists() else None
+        else:
+            model_path = output_dir / f"house_{request_id}.{format}"
+            return str(model_path) if model_path.exists() else None
     
     async def get_report_path(self, request_id: str) -> Optional[str]:
         """Get report file path."""
@@ -476,8 +491,6 @@ class Sketch2HouseService:
     
     def _create_mock_mask(self, height: int, width: int, class_name: str) -> np.ndarray:
         """Create a mock segmentation mask for testing."""
-        import numpy as np
-        
         mask = np.zeros((height, width), dtype=np.uint8)
         
         if class_name == 'wall':

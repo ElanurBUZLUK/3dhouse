@@ -134,78 +134,58 @@ class WallsBuilder:
     
     def _create_wall_mesh(self, segment: Dict[str, Any]) -> Optional[o3d.geometry.TriangleMesh]:
         """Create 3D mesh for a single wall segment."""
-        start = np.array(segment['start'])
-        end = np.array(segment['end'])
-        direction = np.array(segment['direction'])
-        normal = np.array(segment['normal'])
-        thickness = segment['thickness']
-        height = segment['height']
-        
-        # Create wall vertices
-        vertices = []
-        
-        # Bottom face vertices
-        bottom_center = start
-        bottom_left = start + normal * (thickness / 2)
-        bottom_right = start - normal * (thickness / 2)
-        
-        # Top face vertices
-        top_center = start + np.array([0, 0, height])
-        top_left = bottom_left + np.array([0, 0, height])
-        top_right = bottom_right + np.array([0, 0, height])
-        
-        # End vertices
-        end_bottom_center = end
-        end_bottom_left = end + normal * (thickness / 2)
-        end_bottom_right = end - normal * (thickness / 2)
-        end_top_center = end + np.array([0, 0, height])
-        end_top_left = end_bottom_left + np.array([0, 0, height])
-        end_top_right = end_bottom_right + np.array([0, 0, height])
-        
-        # Add vertices
-        vertices.extend([
-            bottom_center, bottom_left, bottom_right,
-            top_center, top_left, top_right,
-            end_bottom_center, end_bottom_left, end_bottom_right,
-            end_top_center, end_top_left, end_top_right
-        ])
-        
-        # Create faces
-        faces = []
-        
-        # Bottom face
-        faces.extend([
-            [0, 1, 2],  # start bottom
-            [6, 8, 7],  # end bottom
-        ])
-        
-        # Top face
-        faces.extend([
-            [3, 5, 4],  # start top
-            [9, 10, 11],  # end top
-        ])
-        
-        # Left side
-        faces.extend([
-            [1, 4, 7], [1, 7, 10],  # left side
-        ])
-        
-        # Right side
-        faces.extend([
-            [2, 8, 5], [2, 11, 8],  # right side
-        ])
-        
-        # Front and back faces
-        faces.extend([
-            [0, 2, 5], [0, 5, 3],  # front
-            [6, 9, 11], [6, 11, 8],  # back
-        ])
+        # Convert 2D segment data to 3D basis vectors
+        start2 = np.array(segment['start'], dtype=float)
+        end2 = np.array(segment['end'], dtype=float)
+        direction2 = np.array(segment['direction'], dtype=float)
+        normal2 = np.array(segment['normal'], dtype=float)
+        thickness = float(segment['thickness'])
+        height = float(segment['height'])
+
+        # Build a rectangular prism along the segment, thickness along normal, height along +Z
+        up = np.array([0.0, 0.0, 1.0])
+        start = np.array([start2[0], start2[1], 0.0])
+        end = np.array([end2[0], end2[1], 0.0])
+        normal = np.array([normal2[0], normal2[1], 0.0])
+        normal_len = np.linalg.norm(normal[:2])
+        if normal_len == 0:
+            return None
+        normal = normal / normal_len
+
+        # Eight corners of the prism
+        s_lb = start + normal * (thickness / 2.0)                   # start left bottom
+        s_rb = start - normal * (thickness / 2.0)                   # start right bottom
+        s_lt = s_lb + up * height                                   # start left top
+        s_rt = s_rb + up * height                                   # start right top
+
+        e_lb = end + normal * (thickness / 2.0)                     # end left bottom
+        e_rb = end - normal * (thickness / 2.0)                     # end right bottom
+        e_lt = e_lb + up * height                                    # end left top
+        e_rt = e_rb + up * height                                    # end right top
+
+        vertices = [s_lb, s_rb, s_lt, s_rt, e_lb, e_rb, e_lt, e_rt]
+
+        # Triangles for 6 faces (two each)
+        faces = [
+            # bottom (s_lb, s_rb, e_rb, e_lb)
+            [0, 1, 5], [0, 5, 4],
+            # top (s_lt, e_lt, e_rt, s_rt)
+            [2, 6, 7], [2, 7, 3],
+            # start face (s_lb, s_lt, s_rt, s_rb)
+            [0, 2, 3], [0, 3, 1],
+            # end face (e_lb, e_rb, e_rt, e_lt)
+            [4, 5, 7], [4, 7, 6],
+            # left face (s_lb, e_lb, e_lt, s_lt)
+            [0, 4, 6], [0, 6, 2],
+            # right face (s_rb, s_rt, e_rt, e_rb)
+            [1, 3, 7], [1, 7, 5],
+        ]
         
         # Create mesh
         try:
             mesh = o3d.geometry.TriangleMesh()
-            mesh.vertices = o3d.utility.Vector3dVector(vertices)
-            mesh.triangles = o3d.utility.Vector3iVector(faces)
+            mesh.vertices = o3d.utility.Vector3dVector(np.asarray(vertices))
+            mesh.triangles = o3d.utility.Vector3iVector(np.asarray(faces, dtype=np.int32))
             mesh.compute_vertex_normals()
             return mesh
         except Exception as e:
