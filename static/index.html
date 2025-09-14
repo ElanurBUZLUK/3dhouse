@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sketch2House3D - Çocuk Çiziminden 3D Ev</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+        
+        .main-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .controls {
+            margin-top: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .control-group select,
+        .control-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .viewer-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .model-info {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>🏠 Sketch2House3D</h2>
+            <p>Çocuk çiziminden 3D ev üretimi</p>
+            
+            <div class="upload-area" id="uploadArea">
+                <div>📁 Çizimi buraya sürükleyin</div>
+                <div>veya</div>
+                <button class="btn" onclick="document.getElementById('fileInput').click()">
+                    Dosya Seç
+                </button>
+                <input type="file" id="fileInput" class="file-input" accept="image/*">
+            </div>
+            
+            <div id="status"></div>
+            <div id="progress" class="progress-bar" style="display: none;">
+                <div class="progress-fill"></div>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="backend">3D Backend:</label>
+                    <select id="backend">
+                        <option value="open3d">Open3D (Hızlı)</option>
+                        <option value="blender">Blender (Kaliteli)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="quality">Kalite:</label>
+                    <select id="quality">
+                        <option value="low">Düşük (Hızlı)</option>
+                        <option value="medium" selected>Orta</option>
+                        <option value="high">Yüksek (Yavaş)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="exportFormat">Export Formatı:</label>
+                    <select id="exportFormat">
+                        <option value="gltf" selected>glTF (Web)</option>
+                        <option value="fbx">FBX (3D Yazılım)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="includeTextures" checked>
+                        Dokuları Dahil Et
+                    </label>
+                </div>
+            </div>
+            
+            <button class="btn" id="generateBtn" onclick="generate3D()" disabled>
+                🏗️ 3D Ev Üret
+            </button>
+            
+            <button class="btn" id="downloadBtn" onclick="downloadModel()" disabled style="display: none;">
+                💾 İndir
+            </button>
+            
+            <div id="modelInfo" class="model-info" style="display: none;">
+                <div id="modelStats"></div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="viewer-container" id="viewerContainer">
+                <div class="loading" id="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <div>3D model yükleniyor...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let currentModel = null;
+        let currentRequestId = null;
+        
+        // Initialize Three.js scene
+        function initViewer() {
+            const container = document.getElementById('viewerContainer');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(5, 5, 5);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+            
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Grid
+            const gridHelper = new THREE.GridHelper(10, 10);
+            scene.add(gridHelper);
+            
+            // Start render loop
+            animate();
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showStatus('Lütfen bir resim dosyası seçin.', 'error');
+                return;
+            }
+            
+            showStatus('Dosya seçildi: ' + file.name, 'success');
+            document.getElementById('generateBtn').disabled = false;
+        }
+        
+        async function generate3D() {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files[0]) {
+                showStatus('Lütfen önce bir dosya seçin.', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('backend', document.getElementById('backend').value);
+            formData.append('export_format', document.getElementById('exportFormat').value);
+            formData.append('quality', document.getElementById('quality').value);
+            formData.append('include_textures', document.getElementById('includeTextures').checked);
+            
+            showStatus('3D model üretiliyor...', 'info');
+            showProgress(true);
+            
+            try {
+                const response = await fetch('/api/v1/infer', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentRequestId = result.request_id;
+                    showStatus('3D model başarıyla üretildi!', 'success');
+                    document.getElementById('downloadBtn').style.display = 'inline-block';
+                    
+                    // Load model in viewer
+                    if (result.model_url) {
+                        loadModel(result.model_url);
+                    }
+                    
+                    // Show model info
+                    showModelInfo(result.metadata);
+                } else {
+                    showStatus('Hata: ' + (result.error || 'Bilinmeyen hata'), 'error');
+                }
+            } catch (error) {
+                showStatus('Bağlantı hatası: ' + error.message, 'error');
+            } finally {
+                showProgress(false);
+            }
+        }
+        
+        function loadModel(modelUrl) {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+            
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                modelUrl,
+                (gltf) => {
+                    // Remove previous model
+                    if (currentModel) {
+                        scene.remove(currentModel);
+                    }
+                    
+                    currentModel = gltf.scene;
+                    scene.add(currentModel);
+                    
+                    // Center and scale model
+                    const box = new THREE.Box3().setFromObject(currentModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 5 / maxDim;
+                    
+                    currentModel.scale.setScalar(scale);
+                    currentModel.position.sub(center.multiplyScalar(scale));
+                    
+                    // Update camera
+                    camera.position.set(5, 5, 5);
+                    controls.target.set(0, 0, 0);
+                    controls.update();
+                    
+                    loading.style.display = 'none';
+                },
+                (progress) => {
+                    console.log('Loading progress:', progress);
+                },
+                (error) => {
+                    console.error('Error loading model:', error);
+                    loading.style.display = 'none';
+                    showStatus('Model yüklenirken hata oluştu.', 'error');
+                }
+            );
+        }
+        
+        function downloadModel() {
+            if (currentRequestId) {
+                const format = document.getElementById('exportFormat').value;
+                const url = `/download/${currentRequestId}?format=${format}`;
+                window.open(url, '_blank');
+            }
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function showProgress(show) {
+            const progressDiv = document.getElementById('progress');
+            progressDiv.style.display = show ? 'block' : 'none';
+            
+            if (show) {
+                // Simulate progress
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += Math.random() * 10;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                    }
+                    document.querySelector('.progress-fill').style.width = progress + '%';
+                }, 200);
+            }
+        }
+        
+        function showModelInfo(metadata) {
+            const modelInfo = document.getElementById('modelInfo');
+            const modelStats = document.getElementById('modelStats');
+            
+            if (metadata) {
+                modelStats.innerHTML = `
+                    <div>İşlem Süresi: ${metadata.processing_time?.toFixed(2) || 'N/A'}s</div>
+                    <div>Kalite: ${metadata.quality || 'N/A'}</div>
+                    <div>Backend: ${metadata.backend || 'N/A'}</div>
+                `;
+                modelInfo.style.display = 'block';
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            initViewer();
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('viewerContainer');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+</html>

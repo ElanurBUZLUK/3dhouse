@@ -21,7 +21,7 @@ class SegmentationModel(nn.Module):
     def __init__(self, 
                  architecture: str = 'deeplabv3plus',
                  encoder: str = 'mobilenetv3_large_100',
-                 num_classes: int = 4,
+                 num_classes: int = 5,
                  input_size: Tuple[int, int] = (256, 256),
                  pretrained: bool = True,
                  activation: str = 'softmax',

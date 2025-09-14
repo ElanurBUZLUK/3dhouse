@@ -3,15 +3,15 @@ model:
   architecture: deeplabv3plus
   encoder: mobilenetv3_large_100
   input_size: [256, 256]
-  num_classes: 4
-  classes: ["bg", "wall", "roof", "opening"]
+  num_classes: 5
+  classes: ["bg", "wall", "roof", "door", "window"]
   pretrained: true
   activation: softmax
 
 # Loss configuration
 loss:
   type: ce_dice
-  class_weights: [0.1, 0.4, 0.3, 0.2]  # bg, wall, roof, opening
+  class_weights: [0.1, 0.3, 0.2, 0.2, 0.2]  # bg, wall, roof, door, window
   label_smoothing: 0.05
   dice_weight: 0.5
   ce_weight: 0.5

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class SegmentationMetrics:
     """Metrics calculator for segmentation tasks."""
     
-    def __init__(self, num_classes: int = 4, class_names: Optional[List[str]] = None):
+    def __init__(self, num_classes: int = 5, class_names: Optional[List[str]] = None):
         """
         Initialize metrics calculator.
         
@@ -24,7 +24,7 @@ class SegmentationMetrics:
             class_names: Names of classes
         """
         self.num_classes = num_classes
-        self.class_names = class_names or [f'class_{i}' for i in range(num_classes)]
+        self.class_names = class_names or ['bg', 'wall', 'roof', 'door', 'window']
         
     def calculate_metrics(self, predictions: torch.Tensor, targets: torch.Tensor) -> Dict[str, float]:
         """

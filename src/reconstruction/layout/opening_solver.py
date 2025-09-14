@@ -53,32 +53,27 @@ class OpeningSolver:
         Returns:
             Dictionary containing opening analysis results
         """
-        # Extract opening mask
-        opening_mask = segmentation_result.get('opening_mask', np.zeros((100, 100), dtype=np.uint8))
+        # Extract door and window masks separately
+        door_mask = segmentation_result.get('door_mask', np.zeros((100, 100), dtype=np.uint8))
+        window_mask = segmentation_result.get('window_mask', np.zeros((100, 100), dtype=np.uint8))
         
-        # Find opening contours
-        contours = self._find_opening_contours(opening_mask)
+        # Find door and window contours separately
+        door_contours = self._find_opening_contours(door_mask)
+        window_contours = self._find_opening_contours(window_mask)
         
-        if not contours:
-            return {
-                'doors': [],
-                'windows': [],
-                'metadata': {
-                    'total_openings': 0,
-                    'doors_count': 0,
-                    'windows_count': 0
-                }
-            }
+        # Analyze door contours
+        doors = []
+        for contour in door_contours:
+            door = self._analyze_opening(contour, facade_polygon, scale_factor, 'door')
+            if door:
+                doors.append(door)
         
-        # Analyze each contour
-        openings = []
-        for contour in contours:
-            opening = self._analyze_opening(contour, facade_polygon, scale_factor)
-            if opening:
-                openings.append(opening)
-        
-        # Classify openings
-        doors, windows = self._classify_openings(openings)
+        # Analyze window contours
+        windows = []
+        for contour in window_contours:
+            window = self._analyze_opening(contour, facade_polygon, scale_factor, 'window')
+            if window:
+                windows.append(window)
         
         # Apply constraints and repair
         doors = self._apply_door_constraints(doors, facade_polygon, scale_factor)
@@ -88,7 +83,7 @@ class OpeningSolver:
             'doors': doors,
             'windows': windows,
             'metadata': {
-                'total_openings': len(openings),
+                'total_openings': len(doors) + len(windows),
                 'doors_count': len(doors),
                 'windows_count': len(windows),
                 'scale_factor': scale_factor
@@ -110,7 +105,8 @@ class OpeningSolver:
     
     def _analyze_opening(self, contour: np.ndarray, 
                         facade_polygon: List[List[float]], 
-                        scale_factor: float) -> Optional[Dict[str, Any]]:
+                        scale_factor: float,
+                        opening_type: str = 'opening') -> Optional[Dict[str, Any]]:
         """Analyze a single opening contour."""
         # Calculate bounding box
         x, y, w, h = cv2.boundingRect(contour)
@@ -139,6 +135,7 @@ class OpeningSolver:
         relative_y = (center_y - facade_min_y) / facade_height if facade_height > 0 else 0
         
         return {
+            'type': opening_type,
             'bbox_px': [x, y, x + w, y + h],
             'center_px': [center_x, center_y],
             'size_px': [w, h],
@@ -162,40 +159,7 @@ class OpeningSolver:
         
         return cv2.pointPolygonTest(facade_polygon_np, (center_x, center_y), False) >= 0
     
-    def _classify_openings(self, openings: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-        """Classify openings as doors or windows."""
-        doors = []
-        windows = []
-        
-        for opening in openings:
-            aspect_ratio = opening['aspect_ratio']
-            relative_y = opening['relative_y']
-            size_m = opening['size_m']
-            
-            # Classification rules
-            is_door = self._is_likely_door(aspect_ratio, relative_y, size_m)
-            is_window = self._is_likely_window(aspect_ratio, relative_y, size_m)
-            
-            if is_door and not is_window:
-                opening['kind'] = 'door'
-                opening['confidence'] = self._calculate_door_confidence(opening)
-                doors.append(opening)
-            elif is_window and not is_door:
-                opening['kind'] = 'window'
-                opening['confidence'] = self._calculate_window_confidence(opening)
-                windows.append(opening)
-            else:
-                # Ambiguous case - use position and size
-                if relative_y > 0.6:  # Lower part of facade
-                    opening['kind'] = 'door'
-                    opening['confidence'] = 0.6
-                    doors.append(opening)
-                else:  # Upper part of facade
-                    opening['kind'] = 'window'
-                    opening['confidence'] = 0.6
-                    windows.append(opening)
-        
-        return doors, windows
+    # _classify_openings method removed - now using separate door/window detection
     
     def _is_likely_door(self, aspect_ratio: float, relative_y: float, size_m: List[float]) -> bool:
         """Check if opening is likely a door."""

@@ -220,10 +220,10 @@ class ConstraintValidator:
                     break
         
         if violations == 0:
-            return True, "All openings are within wall boundaries", 1.0
+            return True, "✅ Tüm açıklıklar duvar sınırları içinde", 1.0
         else:
             score = max(0.0, 1.0 - violations / len(openings))
-            return False, f"{violations} openings are outside wall boundaries", score
+            return False, f"❌ {violations} açıklık duvar sınırları dışında. Lütfen kapı ve pencereleri duvar içine taşıyın.", score
     
     def _validate_no_overlapping_openings(self, layout_params: Dict[str, Any]) -> Tuple[bool, str, float]:
         """Validate that openings do not overlap."""
@@ -249,10 +249,10 @@ class ConstraintValidator:
                     overlaps += 1
         
         if overlaps == 0:
-            return True, "No overlapping openings", 1.0
+            return True, "✅ Açıklıklar çakışmıyor", 1.0
         else:
             score = max(0.0, 1.0 - overlaps / total_pairs)
-            return False, f"{overlaps} pairs of overlapping openings", score
+            return False, f"❌ {overlaps} çift açıklık çakışıyor. Lütfen kapı ve pencereleri birbirinden uzaklaştırın.", score
     
     def _bboxes_overlap(self, bbox1: List[float], bbox2: List[float]) -> bool:
         """Check if two bounding boxes overlap."""
@@ -291,10 +291,10 @@ class ConstraintValidator:
                 violations += 1
         
         if violations == 0:
-            return True, "All doors touch the ground", 1.0
+            return True, "✅ Tüm kapılar zemine değiyor", 1.0
         else:
             score = max(0.0, 1.0 - violations / len(doors))
-            return False, f"{violations} doors do not touch the ground", score
+            return False, f"❌ {violations} kapı zemine değmiyor. Kapıları zemine hizalayın.", score
     
     def _validate_window_height(self, layout_params: Dict[str, Any]) -> Tuple[bool, str, float]:
         """Validate that windows are at reasonable height."""

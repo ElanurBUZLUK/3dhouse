@@ -21,7 +21,10 @@ class GLTFExporter:
                  units: str = 'meters',
                  right_handed: bool = True,
                  include_materials: bool = True,
-                 include_textures: bool = True):
+                 include_textures: bool = True,
+                 use_draco: bool = True,
+                 use_ktx2: bool = True,
+                 draco_compression_level: int = 6):
         """
         Initialize the glTF exporter.
         
@@ -35,6 +38,9 @@ class GLTFExporter:
         self.right_handed = right_handed
         self.include_materials = include_materials
         self.include_textures = include_textures
+        self.use_draco = use_draco
+        self.use_ktx2 = use_ktx2
+        self.draco_compression_level = draco_compression_level
     
     def export_model(self, model_data: Dict[str, Any], output_path: str) -> Dict[str, Any]:
         """Export 3D model to GLB via trimesh, robust single-file output.
@@ -75,7 +81,17 @@ class GLTFExporter:
             if output_path.suffix.lower() == '.gltf':
                 target = output_path.with_suffix('.glb')
 
-            scene.export(target, file_type='glb')
+            # Export with compression options
+            export_kwargs = {'file_type': 'glb'}
+            
+            if self.use_draco:
+                export_kwargs['draco_compression'] = True
+                export_kwargs['draco_compression_level'] = self.draco_compression_level
+            
+            if self.use_ktx2:
+                export_kwargs['ktx2_compression'] = True
+            
+            scene.export(target, **export_kwargs)
 
             return {
                 'success': True,
