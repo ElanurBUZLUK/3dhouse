@@ -24,7 +24,8 @@ class SegmentationModel(nn.Module):
                  num_classes: int = 4,
                  input_size: Tuple[int, int] = (256, 256),
                  pretrained: bool = True,
-                 activation: str = 'softmax'):
+                 activation: str = 'softmax',
+                 in_channels: int = 3):
         """
         Initialize the segmentation model.
         
@@ -43,6 +44,7 @@ class SegmentationModel(nn.Module):
         self.num_classes = num_classes
         self.input_size = input_size
         self.activation = activation
+        self.in_channels = in_channels
         
         # Create the model
         self.model = self._create_model(architecture, encoder, num_classes, pretrained)
@@ -58,7 +60,7 @@ class SegmentationModel(nn.Module):
             return smp.Unet(
                 encoder_name=encoder,
                 encoder_weights='imagenet' if pretrained else None,
-                in_channels=3,
+                in_channels=self.in_channels,
                 classes=num_classes,
                 activation=None  # We'll handle activation separately
             )
@@ -66,7 +68,7 @@ class SegmentationModel(nn.Module):
             return smp.DeepLabV3Plus(
                 encoder_name=encoder,
                 encoder_weights='imagenet' if pretrained else None,
-                in_channels=3,
+                in_channels=self.in_channels,
                 classes=num_classes,
                 activation=None
             )
@@ -74,7 +76,7 @@ class SegmentationModel(nn.Module):
             return smp.FPN(
                 encoder_name=encoder,
                 encoder_weights='imagenet' if pretrained else None,
-                in_channels=3,
+                in_channels=self.in_channels,
                 classes=num_classes,
                 activation=None
             )
@@ -82,7 +84,7 @@ class SegmentationModel(nn.Module):
             return smp.PSPNet(
                 encoder_name=encoder,
                 encoder_weights='imagenet' if pretrained else None,
-                in_channels=3,
+                in_channels=self.in_channels,
                 classes=num_classes,
                 activation=None
             )
@@ -203,27 +205,40 @@ class SegmentationModel(nn.Module):
         return self.predict(image)
     
     def _preprocess_image(self, image: torch.Tensor) -> torch.Tensor:
-        """Preprocess image for model input."""
+        """Preprocess image for model input.
+
+        - Scales to [0,1] if necessary
+        - Resizes to `input_size`
+        - Applies ImageNet normalization to first 3 channels
+        - Keeps extra channels (e.g., edge) as-is in [0,1]
+        """
         # Normalize to [0, 1]
         if image.max() > 1.0:
             image = image / 255.0
-        
+
         # Resize to model input size
         if image.shape[-2:] != self.input_size:
             image = F.interpolate(image, size=self.input_size, mode='bilinear', align_corners=False)
-        
-        # Normalize with ImageNet statistics
-        mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
-        std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
-        
-        if image.device != mean.device:
-            mean = mean.to(image.device)
-            std = std.to(image.device)
-        
-        image = (image - mean) / std
-        
+
+        # Split into RGB and extra channels if any
+        c = image.shape[1]
+        rgb = image[:, :3, :, :] if c >= 3 else image
+        extra = image[:, 3:, :, :] if c > 3 else None
+
+        # Normalize RGB with ImageNet statistics
+        mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1).to(image.device)
+        std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1).to(image.device)
+        if rgb.shape[1] == 3:
+            rgb = (rgb - mean) / std
+
+        # Concatenate back extra channels if present
+        if extra is not None and extra.numel() > 0:
+            image = torch.cat([rgb, extra], dim=1)
+        else:
+            image = rgb
+
         return image
-    
+
     def get_model_info(self) -> Dict[str, Any]:
         """Get model information."""
         total_params = sum(p.numel() for p in self.parameters())
@@ -298,17 +313,17 @@ class SegmentationLoss(nn.Module):
         
         # Cross-entropy loss
         if self.ce_weight > 0:
-            ce_loss = self.ce_loss(predictions, targets)
+            ce_loss = self.ce_loss(predictions, targets) * self.ce_weight
             losses['ce_loss'] = ce_loss
         
         # Dice loss
         if self.dice_weight > 0:
-            dice_loss = self.dice_loss(predictions, targets)
+            dice_loss = self.dice_loss(predictions, targets) * self.dice_weight
             losses['dice_loss'] = dice_loss
         
         # Focal loss
         if self.focal_weight > 0 and self.focal_loss is not None:
-            focal_loss = self.focal_loss(predictions, targets)
+            focal_loss = self.focal_loss(predictions, targets) * self.focal_weight
             losses['focal_loss'] = focal_loss
         
         # Total loss
@@ -334,7 +349,8 @@ def create_segmentation_model(config: Dict[str, Any]) -> SegmentationModel:
         num_classes=config.get('num_classes', 4),
         input_size=tuple(config.get('input_size', [256, 256])),
         pretrained=config.get('pretrained', True),
-        activation=config.get('activation', 'softmax')
+        activation=config.get('activation', 'softmax'),
+        in_channels=int(config.get('in_channels', 3))
     )
 
 
