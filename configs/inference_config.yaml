@@ -1,0 +1,22 @@
+model:
+  architecture: deeplabv3plus
+  encoder: mobilenetv3_large_100
+  num_classes: 4
+  input_size: [256, 256]
+  pretrained: true
+  in_channels: 3
+  # If you have real weights, place them under weights/ and keep this path.
+  # Pipeline will continue without weights if the file is missing or invalid.
+  weights_path: weights/seg_deeplabv3p_mbv3l.pth
+
+geometry:
+  wall_thickness: 0.2
+  wall_height: 3.0
+  corner_radius: 0.05
+  min_wall_length: 0.5
+
+export:
+  units: meters
+  right_handed: true
+  include_materials: true
+  include_textures: true

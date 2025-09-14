@@ -451,13 +451,14 @@ class Sketch2HousePipeline:
             self.model = create_segmentation_model(seg_cfg)
             weights_path = seg_cfg.get('weights_path')
             if weights_path and __import__('os').path.exists(weights_path):
-                import torch
-                state = torch.load(weights_path, map_location='cpu')
-                if isinstance(state, dict) and 'state_dict' in state:
-                    self.model.load_state_dict(state['state_dict'])
-                elif isinstance(state, dict):
-                    self.model.load_state_dict(state)
-                logger.info(f"Loaded weights from {weights_path}")
+                try:
+                    import torch
+                    state = torch.load(weights_path, map_location='cpu')
+                    if isinstance(state, dict) and 'state_dict' in state:
+                        self.model.load_state_dict(state['state_dict'])
+                    elif isinstance(state, dict):
+                        self.model.load_state_dict(state)
+                    logger.info(f"Loaded weights from {weights_path}")
             logger.info("Model loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
@@ -506,7 +507,8 @@ def run_pipeline(image_path: str, output_dir: str, **kwargs) -> Dict[str, Any]:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Sketch2House3D Pipeline')
-    parser.add_argument('--input', required=True, help='Input sketch image path')
+    parser.add_argument('--input', required=False, help='Input sketch image path')
+    parser.add_argument('--image', dest='input', required=False, help='Alias for --input')
     parser.add_argument('--output', required=True, help='Output directory')
     parser.add_argument('--backend', default='open3d', help='3D backend')
     parser.add_argument('--export', default='gltf', help='Export format')
@@ -520,5 +522,7 @@ if __name__ == "__main__":
             cfg = yaml.safe_load(f)
     pipe = Sketch2HousePipeline(cfg)
     pipe.initialize()
+    if not args.input:
+        raise SystemExit('--input/--image is required')
     res = pipe.process(args.input, args.output, backend=args.backend, export_format=args.export)
     print(json.dumps(res, indent=2))
